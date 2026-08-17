@@ -945,58 +945,82 @@ function renderCharts() {
     const clientNames = state.clients.map(c => c.name);
     
     // Calculate values
-    const cancerData = [];
-    const brainData = [];
-    const heartData = [];
+    const generalCancerData = [];
+    const subCancerData = [];
+    const brainHemoData = [];
+    const brainStrokeData = [];
+    const heartIschemicData = [];
+    const heartInfarctData = [];
 
     state.clients.forEach(c => {
       let clientCovs = state.coverages.filter(cov => cov.clientId === c.id);
-      if (state.excludeDuplicates) {
-        clientCovs = clientCovs.filter(cov => {
-          if (!cov.contractId) return true;
-          const con = state.contracts.find(o => o.id === cov.contractId);
-          return !con || !con.isDuplicate;
-        });
-      }
       
-      // General Cancer
-      let cancerAmt = 0;
+      // 1. 일반암
+      let genCancerAmt = 0;
       clientCovs.filter(cov => cov.largeCategory === "암" && cov.mediumCategory === "일반암").forEach(cov => {
-        cancerAmt += parseCoverageAmountToNumber(cov.coverageAmount);
+        genCancerAmt += parseCoverageAmountToNumber(cov.coverageAmount);
       });
-      cancerData.push(cancerAmt);
+      generalCancerData.push(genCancerAmt);
 
-      // Brain (Only sum diagnosis benefits)
-      let brainAmt = 0;
+      // 2. 유사암(소액암)
+      let subCancerAmt = 0;
+      clientCovs.filter(cov => cov.largeCategory === "암" && (cov.mediumCategory.includes("유사암") || cov.mediumCategory.includes("소액암"))).forEach(cov => {
+        subCancerAmt += parseCoverageAmountToNumber(cov.coverageAmount);
+      });
+      subCancerData.push(subCancerAmt);
+
+      // 3. 뇌출혈
+      let brainHemoAmt = 0;
       clientCovs.filter(cov => 
         cov.largeCategory === "뇌" && 
-        ["뇌출혈", "뇌졸중", "뇌혈관"].includes(cov.mediumCategory) && 
+        cov.mediumCategory.includes("뇌출혈") && 
         !cov.smallCategory.includes("수술") && 
         !cov.smallCategory.includes("입원") &&
         !cov.smallCategory.includes("치료")
       ).forEach(cov => {
-        brainAmt += parseCoverageAmountToNumber(cov.coverageAmount);
+        brainHemoAmt += parseCoverageAmountToNumber(cov.coverageAmount);
       });
-      brainData.push(brainAmt);
+      brainHemoData.push(brainHemoAmt);
 
-      // Heart (Only sum diagnosis benefits)
-      let heartAmt = 0;
+      // 4. 뇌졸중
+      let brainStrokeAmt = 0;
+      clientCovs.filter(cov => 
+        cov.largeCategory === "뇌" && 
+        (cov.mediumCategory.includes("뇌졸중") || cov.mediumCategory.includes("뇌졸증")) && 
+        !cov.smallCategory.includes("수술") && 
+        !cov.smallCategory.includes("입원") &&
+        !cov.smallCategory.includes("치료")
+      ).forEach(cov => {
+        brainStrokeAmt += parseCoverageAmountToNumber(cov.coverageAmount);
+      });
+      brainStrokeData.push(brainStrokeAmt);
+
+      // 5. 허혈성심장
+      let heartIschemicAmt = 0;
       clientCovs.filter(cov => 
         cov.largeCategory === "심장" && 
-        ["급성심근경색", "급성심근", "허혈/심혈관"].includes(cov.mediumCategory) && 
+        ["허혈/심혈관", "허혈성", "심혈관"].includes(cov.mediumCategory) && 
         !cov.smallCategory.includes("수술") && 
         !cov.smallCategory.includes("입원") &&
         !cov.smallCategory.includes("치료")
       ).forEach(cov => {
-        heartAmt += parseCoverageAmountToNumber(cov.coverageAmount);
+        heartIschemicAmt += parseCoverageAmountToNumber(cov.coverageAmount);
       });
-      heartData.push(heartAmt);
-    });
+      heartIschemicData.push(heartIschemicAmt);
 
-    // Divide by 10,000 to show in "만원" unit
-    const cancerDataMan = cancerData.map(val => val);
-    const brainDataMan = brainData.map(val => val);
-    const heartDataMan = heartData.map(val => val);
+      // 6. 급성심근경색
+      let heartInfarctAmt = 0;
+      clientCovs.filter(cov => 
+        cov.largeCategory === "심장" && 
+        ["급성심근경색", "급성심근"].includes(cov.mediumCategory) && 
+        !cov.smallCategory.includes("수술") && 
+        !cov.smallCategory.includes("입원") &&
+        !cov.smallCategory.includes("치료")
+      ).forEach(cov => {
+        heartInfarctAmt += parseCoverageAmountToNumber(cov.coverageAmount);
+      });
+      heartInfarctData.push(heartInfarctAmt);
+    });
 
     coverageChart = new Chart(coverageCtx, {
       type: 'bar',
@@ -1005,23 +1029,44 @@ function renderCharts() {
         datasets: [
           {
             label: '일반암',
-            data: cancerDataMan,
+            data: generalCancerData,
             backgroundColor: 'rgba(79, 70, 229, 0.85)',
             borderColor: '#4f46e5',
             borderWidth: 1
           },
           {
-            label: '뇌혈관/뇌졸중',
-            data: brainDataMan,
+            label: '유사암(소액암)',
+            data: subCancerData,
+            backgroundColor: 'rgba(129, 140, 248, 0.85)',
+            borderColor: '#818cf8',
+            borderWidth: 1
+          },
+          {
+            label: '뇌출혈',
+            data: brainHemoData,
             backgroundColor: 'rgba(16, 185, 129, 0.85)',
             borderColor: '#10b981',
             borderWidth: 1
           },
           {
-            label: '허혈성/심근경색',
-            data: heartDataMan,
+            label: '뇌졸중',
+            data: brainStrokeData,
+            backgroundColor: 'rgba(52, 211, 153, 0.85)',
+            borderColor: '#34d399',
+            borderWidth: 1
+          },
+          {
+            label: '허혈성심장',
+            data: heartIschemicData,
             backgroundColor: 'rgba(245, 158, 11, 0.85)',
             borderColor: '#f59e0b',
+            borderWidth: 1
+          },
+          {
+            label: '급성심근경색',
+            data: heartInfarctData,
+            backgroundColor: 'rgba(251, 191, 36, 0.85)',
+            borderColor: '#fbbf24',
             borderWidth: 1
           }
         ]
