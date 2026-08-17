@@ -1076,11 +1076,18 @@ function renderCharts() {
         maintainAspectRatio: false,
         scales: {
           x: {
-            grid: { color: 'transparent' },
+            grid: {
+              color: gridColor,
+              borderDash: [3, 3],
+              drawOnChartArea: true
+            },
             ticks: { color: textColor }
           },
           y: {
-            grid: { color: gridColor },
+            grid: {
+              color: gridColor,
+              borderDash: [3, 3]
+            },
             ticks: {
               color: textColor,
               callback: function(value) {
