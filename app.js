@@ -1966,24 +1966,47 @@ ${JSON.stringify(coveragesContext, null, 2)}
    
 *주의*: 데이터를 분석할 때 절대 임의의 데이터를 날조하지 말고 오로지 제공된 데이터 범위 내에서만 정직하게 답변하세요. 연관 보장이 없다면 가입된 보장이 없음을 정직하게 알리고 보장 설계를 권유해 주세요.`;
 
-  const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${key}`;
+  const attempts = [
+    { url: `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${key}`, name: "gemini-1.5-flash" },
+    { url: `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=${key}`, name: "gemini-1.5-flash-latest" },
+    { url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, name: "gemini-1.5-flash (v1beta)" },
+    { url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${key}`, name: "gemini-1.5-flash-latest (v1beta)" },
+    { url: `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${key}`, name: "gemini-pro" }
+  ];
+  
+  let response = null;
+  let lastError = null;
   
   try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{ text: prompt }]
-        }]
-      })
-    });
+    for (const attempt of attempts) {
+      try {
+        response = await fetch(attempt.url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": key
+          },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{ text: prompt }]
+            }]
+          })
+        });
+        
+        if (response.ok) {
+          lastError = null;
+          break; // Exit loop on success
+        } else {
+          const errData = await response.json();
+          lastError = errData.error?.message || `HTTP ${response.status}`;
+        }
+      } catch (e) {
+        lastError = e.message;
+      }
+    }
     
-    if (!response.ok) {
-      const err = await response.json();
-      throw new Error(err.error?.message || "Gemini API 호출에 실패하였습니다.");
+    if (!response || !response.ok) {
+      throw new Error(lastError || "모든 Gemini 모델의 호출에 실패하였습니다.");
     }
     
     const data = await response.json();
