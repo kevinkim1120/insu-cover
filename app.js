@@ -501,18 +501,20 @@ function renderPart1SummaryTable() {
     <table class="custom-table">
       <thead>
         <tr>
-          <th>대상</th>
+          <th style="min-width: 110px; vertical-align: middle;">
+            <label style="display: flex; align-items: center; gap: 0.35rem; margin: 0; cursor: pointer; font-weight: 700;">
+              <input type="checkbox" onchange="selectFamilyMember('all')" ${state.selectedClientFilter === 'all' ? 'checked' : ''} style="cursor: pointer; width: 14px; height: 14px; accent-color: var(--primary);">
+              대상
+            </label>
+          </th>
           ${categories.map(cat => `<th>${cat.name}</th>`).join("")}
         </tr>
       </thead>
       <tbody>
   `;
 
-  // Render a row for each client
+  // PART 1 summary table always shows all clients to allow visual comparison and quick checkboxes
   let displayClients = state.clients;
-  if (state.selectedClientFilter !== "all") {
-    displayClients = state.clients.filter(c => c.id === state.selectedClientFilter);
-  }
 
   displayClients.forEach(client => {
     // Filter coverages for this client
@@ -527,9 +529,14 @@ function renderPart1SummaryTable() {
     
     html += `
       <tr>
-        <td style="font-weight: 700;">
-          ${client.name}<br>
-          <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal;">(${client.gender}/${client.age}세)</span>
+        <td style="font-weight: 700; vertical-align: middle;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; white-space: nowrap;">
+            <input type="checkbox" class="part1-client-checkbox" onchange="selectFamilyMember(this.checked ? '${client.id}' : 'all')" ${state.selectedClientFilter === client.id ? 'checked' : ''} style="cursor: pointer; width: 15px; height: 15px; accent-color: var(--primary);">
+            <div>
+              ${client.name}<br>
+              <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal;">(${client.gender}/${client.age}세)</span>
+            </div>
+          </div>
         </td>
     `;
     
