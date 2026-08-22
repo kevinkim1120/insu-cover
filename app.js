@@ -57,6 +57,9 @@ function loadStateFromLocalStorage() {
   if (state.clients.length > 0) {
     // Keep filter as 'all' or first client
   }
+  
+  // Load Gemini key
+  setTimeout(loadGeminiKey, 0);
 }
 
 // Save state
@@ -1826,3 +1829,265 @@ function toggleMobileForced() {
   renderCharts();
 }
 window.toggleMobileForced = toggleMobileForced;
+
+// ----------------------------------------------------
+// GEMINI AI INSURANCE SEARCH INTEGRATION
+// ----------------------------------------------------
+function saveGeminiKey() {
+  const input = document.getElementById("gemini-api-key");
+  const key = input.value.trim();
+  if (!key) {
+    showToast("API Key를 입력해 주세요.", "warning");
+    return;
+  }
+  localStorage.setItem("insu_gemini_key", key);
+  showToast("API Key가 브라우저에 안전하게 저장되었습니다.", "success");
+  
+  // Show mask and toggle delete button
+  input.value = "•".repeat(20);
+  document.getElementById("btn-clear-gemini-key").style.display = "inline-flex";
+}
+window.saveGeminiKey = saveGeminiKey;
+
+function clearGeminiKey() {
+  localStorage.removeItem("insu_gemini_key");
+  const input = document.getElementById("gemini-api-key");
+  input.value = "";
+  document.getElementById("btn-clear-gemini-key").style.display = "none";
+  showToast("API Key가 브라우저에서 안전하게 삭제되었습니다.", "info");
+}
+window.clearGeminiKey = clearGeminiKey;
+
+function loadGeminiKey() {
+  const key = localStorage.getItem("insu_gemini_key");
+  const input = document.getElementById("gemini-api-key");
+  if (!input) return;
+  
+  if (key) {
+    input.value = "•".repeat(20);
+    document.getElementById("btn-clear-gemini-key").style.display = "inline-flex";
+  } else {
+    input.value = "";
+    document.getElementById("btn-clear-gemini-key").style.display = "none";
+  }
+}
+window.loadGeminiKey = loadGeminiKey;
+
+async function searchAICoverage() {
+  const key = localStorage.getItem("insu_gemini_key");
+  if (!key) {
+    showToast("API Key를 먼저 저장해 주세요. (무료 키 발급 링크 참조)", "warning");
+    return;
+  }
+  
+  const query = document.getElementById("ai-search-query").value.trim();
+  if (!query) {
+    showToast("질문을 입력해 주세요.", "warning");
+    return;
+  }
+  
+  const resultDiv = document.getElementById("ai-search-result");
+  resultDiv.style.display = "block";
+  resultDiv.innerHTML = `
+    <div class="ai-pulse-loading">
+      <div class="ai-pulse-spinner"></div>
+      <div style="font-weight:600; color:var(--primary);">AI 보험 비서가 데이터 분석 중입니다...</div>
+      <div style="font-size:0.8rem; color:var(--text-muted);">질병 정보와 가입 내역을 대조하는 중입니다.</div>
+    </div>
+  `;
+  
+  // Smooth scroll to result
+  resultDiv.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  
+  // Compile insurance data context
+  let targetClient = null;
+  let clientNameContext = "전체 가족";
+  let targetContracts = [];
+  let targetCoverages = [];
+  
+  if (state.selectedClientFilter === "all") {
+    targetContracts = state.contracts;
+    targetCoverages = state.coverages;
+  } else {
+    targetClient = state.clients.find(c => c.id === state.selectedClientFilter);
+    if (targetClient) {
+      clientNameContext = `${targetClient.name}님 (${targetClient.gender}/${targetClient.age}세)`;
+      targetContracts = state.contracts.filter(c => c.clientId === targetClient.id);
+      targetCoverages = state.coverages.filter(c => c.clientId === targetClient.id);
+    }
+  }
+  
+  // Format context for LLM
+  const contractsContext = targetContracts.map(c => ({
+    company: c.company,
+    productName: c.productName,
+    premium: c.premium,
+    paymentMethod: c.paymentMethod,
+    contractDate: c.contractDate,
+    status: c.status
+  }));
+  
+  const coveragesContext = targetCoverages.map(c => {
+    const parentContract = state.contracts.find(con => con.id === c.contractId);
+    return {
+      product: parentContract ? parentContract.productName : "직접 입력/기타",
+      largeCategory: c.largeCategory,
+      mediumCategory: c.mediumCategory,
+      smallCategory: c.smallCategory,
+      amount: c.coverageAmount,
+      remarks: c.remarks
+    };
+  });
+  
+  const prompt = `당신은 대한민국 최고 수준의 전문 보험 보장분석 AI 비서입니다.
+사용자가 입력한 질병/질의와 아래 제공된 고객의 보험 가입 데이터를 대조하여 관련된 보장상품과 보장 금액을 정밀하게 분석해 주세요.
+
+[분석 기준 대상]
+- 대상: ${clientNameContext}
+
+[가입 상품 목록 (전체 ${contractsContext.length}건)]
+${JSON.stringify(contractsContext, null, 2)}
+
+[세부 보장 담보(특약) 목록 (전체 ${coveragesContext.length}건)]
+${JSON.stringify(coveragesContext, null, 2)}
+
+[사용자 질의]
+"${query}"
+
+[분석 및 답변 지침]
+1. 사용자가 질문한 질병/치료가 가입된 특약들 중 어떤 것과 연관이 있는지 분석하세요.
+2. 연관된 특약이 있다면 해당 특약명, 보장금액, 가입한 보험회사 및 상품명을 명시하세요.
+3. 여러 개의 보험사에서 중복 보장이 가능한 경우(예: 암진단비, 수술비 등 정액 보상), 보장 금액을 합산하여 총액을 알려주세요.
+4. 실손의료비가 있는 경우, 해당 질병의 입원/통원 치료 시 실손의료비 청구가 가능하다는 점과 한도를 안내하세요.
+5. 분석 결과는 다음의 마크다운 형식으로 가독성 높고 친근하게 출력하세요:
+   - **요약**: 질문한 질병에 대해 준비된 총 보장 수준 요약
+   - **관련 보장 상품 및 특약 리스트**: 테이블 또는 깔끔한 리스트 형식 (회사명, 상품명, 특약명, 보장금액, 비고)
+   - **보장 공백 및 AI 조언**: 해당 질병에 대해 보장이 부족한 부분이나 유의사항 (예: 대기기간, 감액기간, 면책 조건 등)
+   
+*주의*: 데이터를 분석할 때 절대 임의의 데이터를 날조하지 말고 오로지 제공된 데이터 범위 내에서만 정직하게 답변하세요. 연관 보장이 없다면 가입된 보장이 없음을 정직하게 알리고 보장 설계를 권유해 주세요.`;
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
+  
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{ text: prompt }]
+        }]
+      })
+    });
+    
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error?.message || "Gemini API 호출에 실패하였습니다.");
+    }
+    
+    const data = await response.json();
+    const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text || "답변을 생성할 수 없습니다.";
+    
+    resultDiv.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-glass); padding-bottom:0.75rem; margin-bottom:1rem;">
+        <span style="font-weight:700; color:var(--primary); font-size:1.05rem;">🤖 AI 분석 보고서</span>
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('ai-search-result').style.display='none'" style="padding:0.25rem 0.5rem;">닫기</button>
+      </div>
+      <div class="ai-rendered-content">
+        ${parseMarkdownToHtml(replyText)}
+      </div>
+    `;
+    
+  } catch (error) {
+    resultDiv.innerHTML = `
+      <div style="color:var(--danger); font-weight:600; padding:1rem; border:1px solid var(--danger-light); background-color:var(--danger-light); border-radius:var(--radius-md);">
+        ⚠️ 에러 발생: ${error.message}
+        <br><span style="font-size:0.8rem; font-weight:normal; color:var(--text-main); margin-top:0.5rem; display:block;">API Key가 올바른지 확인해 주세요.</span>
+      </div>
+    `;
+  }
+}
+window.searchAICoverage = searchAICoverage;
+
+function runQuickAIQuery(text) {
+  document.getElementById("ai-search-query").value = text;
+  searchAICoverage();
+}
+window.runQuickAIQuery = runQuickAIQuery;
+
+function parseMarkdownToHtml(md) {
+  if (!md) return "";
+  
+  let text = md.trim();
+  text = text.replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, '');
+  
+  // Headings
+  text = text.replace(/^### (.*$)/gim, '<h4 style="margin-top:1rem; margin-bottom:0.5rem; color:var(--primary); font-weight:700;">$1</h4>');
+  text = text.replace(/^## (.*$)/gim, '<h3 style="margin-top:1.25rem; margin-bottom:0.75rem; color:var(--text-main); font-weight:700; border-bottom:1px solid var(--border-glass); padding-bottom:0.25rem;">$1</h3>');
+  text = text.replace(/^# (.*$)/gim, '<h2 style="margin-top:1.5rem; margin-bottom:1rem; color:var(--text-main); font-weight:800;">$1</h2>');
+  
+  // Bold
+  text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  
+  // Blockquotes
+  text = text.replace(/^\>\s?(.*$)/gim, '<blockquote>$1</blockquote>');
+  
+  // Lists
+  text = text.replace(/^\s*-\s*(.*$)/gim, '<li style="margin-left:1.5rem; margin-bottom:0.35rem;">$1</li>');
+  text = text.replace(/^\s*\*\s*(.*$)/gim, '<li style="margin-left:1.5rem; margin-bottom:0.35rem;">$1</li>');
+  
+  // Convert markdown tables
+  const lines = text.split('\n');
+  let inTable = false;
+  let tableHtml = '';
+  let processedLines = [];
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (line.startsWith('|') && line.endsWith('|')) {
+      if (!inTable) {
+        inTable = true;
+        tableHtml = '<table class="custom-table" style="margin: 1rem 0; width:100%; border-collapse:collapse;"><thead>';
+      }
+      
+      const cells = line.split('|').map(c => c.trim()).filter((c, idx, arr) => idx > 0 && idx < arr.length - 1);
+      
+      if (line.includes('---')) {
+        tableHtml += '</thead><tbody>';
+        continue;
+      }
+      
+      const rowTag = tableHtml.includes('<tbody>') ? 'td' : 'th';
+      tableHtml += '<tr>';
+      cells.forEach(cell => {
+        const cellFormatted = cell.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        if (rowTag === 'th') {
+          tableHtml += `<th style="background-color:#1e3a8a; color:#ffffff; font-weight:600; padding:0.625rem 0.875rem; border:1px solid var(--border-glass);">${cellFormatted}</th>`;
+        } else {
+          tableHtml += `<td style="padding:0.625rem 0.875rem; border:1px solid var(--border-glass);">${cellFormatted}</td>`;
+        }
+      });
+      tableHtml += '</tr>';
+    } else {
+      if (inTable) {
+        inTable = false;
+        tableHtml += '</tbody></table>';
+        processedLines.push(tableHtml);
+        tableHtml = '';
+      }
+      processedLines.push(line);
+    }
+  }
+  if (inTable) {
+    tableHtml += '</tbody></table>';
+    processedLines.push(tableHtml);
+  }
+  
+  text = processedLines.join('\n');
+  text = text.replace(/\n/g, '<br>');
+  text = text.replace(/<\/tr><br><tr>/g, '</tr><tr>');
+  text = text.replace(/<\/table><br>/g, '</table>');
+  
+  return text;
+}
