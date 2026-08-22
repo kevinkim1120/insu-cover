@@ -158,35 +158,6 @@
           <span style="font-size: 0.8rem; color: var(--text-muted);">자연어로 질문하면 가입된 보험 특약 내역을 인공지능이 즉시 분석하여 답변합니다.</span>
         </div>
         <div class="panel-body" style="padding: 1.5rem;">
-          <!-- API Key Manager -->
-          <div class="ai-key-card" style="background: rgba(79, 70, 229, 0.05); border: 1px dashed rgba(79, 70, 229, 0.3); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1.25rem;">
-            <div style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
-              <div style="flex: 2; min-width: 250px;">
-                <label class="form-label" style="font-weight: 600; margin-bottom: 0.25rem;">Google Gemini API Key</label>
-                <input type="password" id="gemini-api-key" class="form-control" placeholder="API Key 입력 (예: AIzaSy...)" style="font-family: monospace;">
-              </div>
-              <div style="flex: 1; min-width: 150px;">
-                <label class="form-label" style="font-weight: 600; margin-bottom: 0.25rem;">AI 모델 선택</label>
-                <select id="gemini-model-select" class="form-control" onchange="handleModelSelectChange()">
-                  <option value="gemini-1.5-flash" selected>gemini-1.5-flash (권장)</option>
-                  <option value="gemini-1.5-flash-latest">gemini-1.5-flash-latest</option>
-                  <option value="gemini-1.5-pro">gemini-1.5-pro</option>
-                  <option value="gemini-1.0-pro">gemini-1.0-pro</option>
-                  <option value="custom">직접 입력...</option>
-                </select>
-              </div>
-              <div id="custom-model-input-wrapper" style="flex: 1; min-width: 150px; display: none;">
-                <label class="form-label" style="font-weight: 600; margin-bottom: 0.25rem;">커스텀 모델명</label>
-                <input type="text" id="custom-gemini-model" class="form-control" placeholder="예: gemini-1.5-flash-8b">
-              </div>
-              <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
-                <button type="button" id="btn-save-gemini-key" class="btn btn-primary" onclick="saveGeminiKey()">저장</button>
-                <button type="button" id="btn-clear-gemini-key" class="btn btn-secondary" onclick="clearGeminiKey()" style="display: none;">삭제</button>
-                <a href="https://aistudio.google.com/" target="_blank" class="btn btn-secondary" style="display: inline-flex; align-items: center; justify-content: center; text-decoration: none; font-size: 0.85rem;">🔑 무료 키 발급</a>
-              </div>
-            </div>
-            <div class="form-hint" style="margin-top: 0.5rem;">입력하신 API Key와 모델 설정은 브라우저 내부(localStorage)에만 안전하게 저장됩니다.</div>
-          </div>
 
           <!-- Search Form -->
           <div class="ai-search-form" style="display: flex; gap: 0.75rem; margin-bottom: 1rem; align-items: center; flex-wrap: wrap;">
@@ -503,7 +474,7 @@
 
       <!-- TAB 4: Settings -->
       <div id="admin-section-settings" class="view-panel">
-        <div class="dashboard-row" style="grid-template-columns: 1fr 1fr;">
+        <div class="dashboard-row" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));">
           
           <!-- System Information & Reset -->
           <div class="dashboard-panel">
@@ -551,6 +522,43 @@
                 <button type="submit" class="btn btn-primary" style="width: 100%;">비밀번호 변경 적용</button>
               </div>
             </form>
+          </div>
+
+          <!-- Gemini AI API Configuration -->
+          <div class="dashboard-panel">
+            <div class="panel-header">
+              <h2 class="panel-title">⚙️ 구글 Gemini AI API 설정</h2>
+            </div>
+            <div style="margin-bottom: 1.25rem;">
+              <p style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.5;">
+                AI 질병 보장 검색 기능에 연동될 Google Gemini API Key 및 모델 식별자를 설정합니다.<br>
+                기본값으로 정상 가동되는 고성능 2026년형 <strong>gemini-2.5-flash</strong> 키가 코드에 내장되어 있으므로 일반 사용자는 별도의 설정 없이 바로 검색을 사용하실 수 있습니다.
+              </p>
+            </div>
+            <div class="ai-key-card" style="background: rgba(79, 70, 229, 0.05); border: 1px dashed rgba(79, 70, 229, 0.3); border-radius: var(--radius-md); padding: 1.25rem;">
+              <div class="form-group">
+                <label class="form-label" style="font-weight: 600;">Google Gemini API Key</label>
+                <input type="password" id="gemini-api-key" class="form-control" placeholder="API Key 입력 (예: AQ.Ab... 또는 AIzaSy...)" style="font-family: monospace;">
+              </div>
+              <div class="form-group" style="margin-top: 1rem;">
+                <label class="form-label" style="font-weight: 600;">AI 모델 선택</label>
+                <select id="gemini-model-select" class="form-control" onchange="handleModelSelectChange()">
+                  <option value="gemini-2.5-flash" selected>gemini-2.5-flash (권장)</option>
+                  <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite</option>
+                  <option value="gemini-3.5-flash">gemini-3.5-flash (최신)</option>
+                  <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+                  <option value="custom">직접 입력...</option>
+                </select>
+              </div>
+              <div id="custom-model-input-wrapper" class="form-group" style="margin-top: 1rem; display: none;">
+                <label class="form-label" style="font-weight: 600;">커스텀 모델명</label>
+                <input type="text" id="custom-gemini-model" class="form-control" placeholder="예: gemini-3.7-flash">
+              </div>
+              <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem; justify-content: flex-end; flex-wrap: wrap;">
+                <button type="button" id="btn-save-gemini-key" class="btn btn-primary" onclick="saveGeminiKey()">저장</button>
+                <button type="button" id="btn-clear-gemini-key" class="btn btn-secondary" onclick="clearGeminiKey()" style="display: none;">초기화 (코드 기본키 복원)</button>
+              </div>
+            </div>
           </div>
 
         </div>
