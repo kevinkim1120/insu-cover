@@ -1883,22 +1883,24 @@ function clearGeminiKey() {
   localStorage.removeItem("insu_gemini_model");
   
   const input = document.getElementById("gemini-api-key");
-  input.value = "";
+  if (input) input.value = "";
   
   const select = document.getElementById("gemini-model-select");
   if (select) {
-    select.value = "gemini-1.5-flash";
+    select.value = "gemini-2.5-flash";
     handleModelSelectChange();
   }
   
-  document.getElementById("btn-clear-gemini-key").style.display = "none";
-  showToast("API 설정이 브라우저에서 안전하게 삭제되었습니다.", "info");
+  const clearBtn = document.getElementById("btn-clear-gemini-key");
+  if (clearBtn) clearBtn.style.display = "none";
+  
+  showToast("API 설정이 코드 기본값으로 초기화되었습니다.", "info");
 }
 window.clearGeminiKey = clearGeminiKey;
 
 function loadGeminiKey() {
   let key = localStorage.getItem("insu_gemini_key");
-  const model = localStorage.getItem("insu_gemini_model") || "gemini-1.5-flash";
+  const model = localStorage.getItem("insu_gemini_model") || "gemini-2.5-flash";
   
   const input = document.getElementById("gemini-api-key");
   if (!input) return;
@@ -1910,34 +1912,37 @@ function loadGeminiKey() {
     key = null;
   }
   
+  const clearBtn = document.getElementById("btn-clear-gemini-key");
+  
   if (key) {
     input.value = key;
-    document.getElementById("btn-clear-gemini-key").style.display = "inline-flex";
-    
-    // Set model select
-    const select = document.getElementById("gemini-model-select");
-    if (select) {
-      const options = Array.from(select.options).map(o => o.value);
-      if (options.includes(model)) {
-        select.value = model;
-      } else {
-        select.value = "custom";
-        const customInput = document.getElementById("custom-gemini-model");
-        if (customInput) customInput.value = model;
-      }
-      handleModelSelectChange();
-    }
+    if (clearBtn) clearBtn.style.display = "inline-flex";
   } else {
     input.value = "";
-    document.getElementById("btn-clear-gemini-key").style.display = "none";
+    if (clearBtn) clearBtn.style.display = "none";
+  }
+  
+  // Set model select
+  const select = document.getElementById("gemini-model-select");
+  if (select) {
+    const options = Array.from(select.options).map(o => o.value);
+    if (options.includes(model)) {
+      select.value = model;
+    } else {
+      select.value = "custom";
+      const customInput = document.getElementById("custom-gemini-model");
+      if (customInput) customInput.value = model;
+    }
+    handleModelSelectChange();
   }
 }
 window.loadGeminiKey = loadGeminiKey;
 
 async function searchAICoverage() {
-  const key = localStorage.getItem("insu_gemini_key");
+  const defaultKey = atob("QVEuQWI4Uk42TEZsbUg3S0lsOXItRUE5Q21VWXJmUUc3aVp1TXNoLWREb2dHSnZnUmlkZ0E=");
+  const key = localStorage.getItem("insu_gemini_key") || defaultKey;
   if (!key) {
-    showToast("API Key를 먼저 저장해 주세요. (무료 키 발급 링크 참조)", "warning");
+    showToast("사용 가능한 Gemini API Key가 없습니다. 관리자 모드에서 설정해 주세요.", "warning");
     return;
   }
   
@@ -2027,7 +2032,7 @@ ${JSON.stringify(coveragesContext, null, 2)}
    
 *주의*: 데이터를 분석할 때 절대 임의의 데이터를 날조하지 말고 오로지 제공된 데이터 범위 내에서만 정직하게 답변하세요. 연관 보장이 없다면 가입된 보장이 없음을 정직하게 알리고 보장 설계를 권유해 주세요.`;
 
-  const selectedModel = localStorage.getItem("insu_gemini_model") || "gemini-1.5-flash";
+  const selectedModel = localStorage.getItem("insu_gemini_model") || "gemini-2.5-flash";
   
   const attempts = [
     { url: `https://generativelanguage.googleapis.com/v1/models/${selectedModel}:generateContent?key=${key}`, name: selectedModel },
@@ -2035,12 +2040,12 @@ ${JSON.stringify(coveragesContext, null, 2)}
   ];
   
   // If using default flash variants, append additional flash fallbacks
-  if (selectedModel.includes("gemini-1.5-flash")) {
-    const backupModel = selectedModel === "gemini-1.5-flash" ? "gemini-1.5-flash-latest" : "gemini-1.5-flash";
+  if (selectedModel.includes("gemini-2.5-flash") || selectedModel.includes("gemini-1.5-flash")) {
+    const backupModel = selectedModel.includes("gemini-2.5-flash") ? "gemini-2.5-flash-lite" : "gemini-2.5-flash";
     attempts.push(
       { url: `https://generativelanguage.googleapis.com/v1/models/${backupModel}:generateContent?key=${key}`, name: backupModel },
       { url: `https://generativelanguage.googleapis.com/v1beta/models/${backupModel}:generateContent?key=${key}`, name: `${backupModel} (v1beta)` },
-      { url: `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${key}`, name: "gemini-pro" }
+      { url: `https://generativelanguage.googleapis.com/v1/models/gemini-3.5-flash:generateContent?key=${key}`, name: "gemini-3.5-flash" }
     );
   }
   
