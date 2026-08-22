@@ -1850,6 +1850,12 @@ function saveGeminiKey() {
     return;
   }
   
+  // Format validation for Google API Keys
+  if (!key.startsWith("AIzaSy") || key.length !== 39) {
+    showToast("올바른 구글 API Key 형식(AIzaSy로 시작하는 39자리 문자열)이 아닙니다.", "danger");
+    return;
+  }
+  
   const modelSelect = document.getElementById("gemini-model-select");
   let modelVal = modelSelect.value;
   if (modelVal === "custom") {
