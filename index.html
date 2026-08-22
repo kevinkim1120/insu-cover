@@ -151,6 +151,54 @@
         </div>
       </div>
 
+      <!-- AI Search Panel (Google Gemini API) -->
+      <div class="dashboard-panel collapsible-panel" id="panel-ai-search" style="margin-bottom: 2.5rem;">
+        <div class="panel-header" onclick="togglePanel('panel-ai-search')">
+          <h2 class="panel-title">🔍 AI 질병 보장 검색 (Gemini 연계) <span class="collapse-indicator">▲</span></h2>
+          <span style="font-size: 0.8rem; color: var(--text-muted);">자연어로 질문하면 가입된 보험 특약 내역을 인공지능이 즉시 분석하여 답변합니다.</span>
+        </div>
+        <div class="panel-body" style="padding: 1.5rem;">
+          <!-- API Key Manager -->
+          <div class="ai-key-card" style="background: rgba(79, 70, 229, 0.05); border: 1px dashed rgba(79, 70, 229, 0.3); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1.25rem;">
+            <div style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
+              <div style="flex: 1; min-width: 250px;">
+                <label class="form-label" style="font-weight: 600; margin-bottom: 0.25rem;">Google Gemini API Key</label>
+                <input type="password" id="gemini-api-key" class="form-control" placeholder="API Key 입력 (예: AIzaSy...)" style="font-family: monospace;">
+              </div>
+              <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                <button type="button" id="btn-save-gemini-key" class="btn btn-primary" onclick="saveGeminiKey()">키 저장</button>
+                <button type="button" id="btn-clear-gemini-key" class="btn btn-secondary" onclick="clearGeminiKey()" style="display: none;">삭제</button>
+                <a href="https://aistudio.google.com/" target="_blank" class="btn btn-secondary" style="display: inline-flex; align-items: center; justify-content: center; text-decoration: none; font-size: 0.85rem;">🔑 무료 키 발급</a>
+              </div>
+            </div>
+            <div class="form-hint" style="margin-top: 0.5rem;">입력하신 API Key는 브라우저 내부(localStorage)에만 안전하게 저장되며, 외부 서버로 전송되지 않습니다.</div>
+          </div>
+
+          <!-- Search Form -->
+          <div class="ai-search-form" style="display: flex; gap: 0.75rem; margin-bottom: 1rem; align-items: center; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 250px;">
+              <input type="text" id="ai-search-query" class="form-control" placeholder="예: '당뇨병이나 대상포진에 걸리면 어떤 보험금을 받나요?', '김창완의 암 진단비 총합은?'" style="padding: 0.75rem 1rem;">
+            </div>
+            <button type="button" id="btn-ai-search" class="btn btn-primary" onclick="searchAICoverage()" style="padding: 0.75rem 1.5rem; height: auto;">🔍 AI 분석 시작</button>
+          </div>
+
+          <!-- Recommendation Tags -->
+          <div class="ai-recommend-tags" style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; align-items: center;">
+            <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">추천 검색어:</span>
+            <span class="badge badge-tag" style="cursor:pointer;" onclick="runQuickAIQuery('암 진단 시 받을 수 있는 진단비 총액은?')">암 진단비</span>
+            <span class="badge badge-tag" style="cursor:pointer;" onclick="runQuickAIQuery('뇌출혈이나 뇌졸중이 발생하면 어떤 보장을 받나요?')">뇌졸중/뇌출혈</span>
+            <span class="badge badge-tag" style="cursor:pointer;" onclick="runQuickAIQuery('당뇨병이나 대상포진 같은 만성 질환도 보장되나요?')">당뇨/대상포진</span>
+            <span class="badge badge-tag" style="cursor:pointer;" onclick="runQuickAIQuery('깁스 치료나 골절 시 받을 수 있는 혜택은?')">골절/깁스</span>
+            <span class="badge badge-tag" style="cursor:pointer;" onclick="runQuickAIQuery('상해나 질병으로 수술하고 입원하면 일당은 얼마인가요?')">수술/입원일당</span>
+          </div>
+
+          <!-- Result Area -->
+          <div id="ai-search-result" class="ai-result-panel" style="display: none;">
+            <!-- Rendered Dynamic Content -->
+          </div>
+        </div>
+      </div>
+
       <!-- PART 1: Core Coverage Summary Table -->
       <div class="dashboard-panel collapsible-panel" id="panel-part1" style="margin-bottom: 2.5rem;">
         <div class="panel-header" onclick="togglePanel('panel-part1')">
