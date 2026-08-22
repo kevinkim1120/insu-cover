@@ -1965,72 +1965,87 @@ async function searchAICoverage() {
   // Smooth scroll to result
   resultDiv.scrollIntoView({ behavior: "smooth", block: "nearest" });
   
-  // Compile insurance data context
-  let targetClient = null;
+  // Determine current active filter for context fallback
   let clientNameContext = "전체 가족";
-  let targetContracts = [];
-  let targetCoverages = [];
-  
-  if (state.selectedClientFilter === "all") {
-    targetContracts = state.contracts;
-    targetCoverages = state.coverages;
-  } else {
-    targetClient = state.clients.find(c => c.id === state.selectedClientFilter);
-    if (targetClient) {
-      clientNameContext = `${targetClient.name}님 (${targetClient.gender}/${targetClient.age}세)`;
-      targetContracts = state.contracts.filter(c => c.clientId === targetClient.id);
-      targetCoverages = state.coverages.filter(c => c.clientId === targetClient.id);
+  if (state.selectedClientFilter !== "all") {
+    const activeClient = state.clients.find(c => c.id === state.selectedClientFilter);
+    if (activeClient) {
+      clientNameContext = `${activeClient.name}님 (${activeClient.gender}/${activeClient.age}세)`;
     }
   }
-  
-  // Format context for LLM
-  const contractsContext = targetContracts.map(c => ({
-    company: c.company,
-    productName: c.productName,
-    premium: c.premium,
-    paymentMethod: c.paymentMethod,
-    contractDate: c.contractDate,
-    status: c.status
+
+  // Package ALL family database to allow dynamic querying across all members
+  const allClients = state.clients.map(c => ({
+    id: c.id,
+    name: c.name,
+    gender: c.gender,
+    age: c.age
   }));
   
-  const coveragesContext = targetCoverages.map(c => {
+  const allContracts = state.contracts.map(c => {
+    const client = state.clients.find(cl => cl.id === c.clientId);
+    return {
+      clientName: client ? client.name : "미지정",
+      company: c.company,
+      productName: c.productName,
+      premium: c.premium,
+      paymentMethod: c.paymentMethod,
+      contractDate: c.contractDate,
+      status: c.status
+    };
+  });
+  
+  const allCoverages = state.coverages.map(c => {
+    const client = state.clients.find(cl => cl.id === c.clientId);
     const parentContract = state.contracts.find(con => con.id === c.contractId);
     return {
-      product: parentContract ? parentContract.productName : "직접 입력/기타",
+      clientName: client ? client.name : "미지정",
+      productName: parentContract ? parentContract.productName : "직접 입력/기타",
+      company: parentContract ? parentContract.company : "기타",
       largeCategory: c.largeCategory,
       mediumCategory: c.mediumCategory,
       smallCategory: c.smallCategory,
-      amount: c.coverageAmount,
+      coverageAmount: c.coverageAmount,
       remarks: c.remarks
     };
   });
   
   const prompt = `당신은 대한민국 최고 수준의 전문 보험 보장분석 AI 비서입니다.
-사용자가 입력한 질병/질의와 아래 제공된 고객의 보험 가입 데이터를 대조하여 관련된 보장상품과 보장 금액을 정밀하게 분석해 주세요.
+사용자의 질문(질병, 입원/수술, 특정 보험사, 특정 가족 구성원 언급 등)을 아래 전체 가족 보험 가입 데이터베이스와 정밀 대조하여 답변해 주세요.
 
-[분석 기준 대상]
-- 대상: ${clientNameContext}
+[현재 대시보드 선택 기준 대상]
+- 현재 필터링된 대상: ${clientNameContext} (만약 사용자가 질문에서 다른 구성원의 이름을 언급했다면, 이 필터를 무시하고 질문에 언급된 구성원의 데이터를 기준으로 분석하세요.)
 
-[가입 상품 목록 (전체 ${contractsContext.length}건)]
-${JSON.stringify(contractsContext, null, 2)}
+[전체 가족 구성원 목록]
+${JSON.stringify(allClients, null, 2)}
 
-[세부 보장 담보(특약) 목록 (전체 ${coveragesContext.length}건)]
-${JSON.stringify(coveragesContext, null, 2)}
+[전체 가입 상품 목록]
+${JSON.stringify(allContracts, null, 2)}
+
+[전체 세부 보장 담보(특약) 목록]
+${JSON.stringify(allCoverages, null, 2)}
 
 [사용자 질의]
 "${query}"
 
-[분석 및 답변 지침]
-1. 사용자가 질문한 질병/치료가 가입된 특약들 중 어떤 것과 연관이 있는지 분석하세요.
-2. 연관된 특약이 있다면 해당 특약명, 보장금액, 가입한 보험회사 및 상품명을 명시하세요.
-3. 여러 개의 보험사에서 중복 보장이 가능한 경우(예: 암진단비, 수술비 등 정액 보상), 보장 금액을 합산하여 총액을 알려주세요.
-4. 실손의료비가 있는 경우, 해당 질병의 입원/통원 치료 시 실손의료비 청구가 가능하다는 점과 한도를 안내하세요.
-5. 분석 결과는 다음의 마크다운 형식으로 가독성 높고 친근하게 출력하세요:
-   - **요약**: 질문한 질병에 대해 준비된 총 보장 수준 요약
-   - **관련 보장 상품 및 특약 리스트**: 테이블 또는 깔끔한 리스트 형식 (회사명, 상품명, 특약명, 보장금액, 비고)
-   - **보장 공백 및 AI 조언**: 해당 질병에 대해 보장이 부족한 부분이나 유의사항 (예: 대기기간, 감액기간, 면책 조건 등)
-   
-*주의*: 데이터를 분석할 때 절대 임의의 데이터를 날조하지 말고 오로지 제공된 데이터 범위 내에서만 정직하게 답변하세요. 연관 보장이 없다면 가입된 보장이 없음을 정직하게 알리고 보장 설계를 권유해 주세요.`;
+[분석 및 답변 핵심 지침]
+1. **대상자 파악**: 사용자의 질문에서 특정 인물(예: 김창완, 오외점, 박상미, 김지우 등)이 언급되었는지 확인하세요. 
+   - 언급되었다면 반드시 그 대상자의 데이터만 필터링하여 답변을 작성하세요.
+   - 이름이 언급되지 않았다면, [현재 대시보드 선택 기준 대상]인 "${clientNameContext}"을 기본 대상으로 설정하여 분석하세요.
+2. **보험사 및 상품명 매칭**: 질문에 특정 보험사(예: 한화생명, 현대해상, 삼성화재 등)나 상품명(예: 입원보험, 암보험 등)이 언급된 경우, 해당 조건에 맞는 상품 목록과 세부 급부 내역만 정확하게 추출하여 매칭하세요.
+3. **세부 담보 및 보장내용 분석**:
+   - 예: "입원" 관련 질문인 경우 -> '수술/입원' 대분류나 입원일당 특약, 실손의료비 통원/입원 특약을 찾아서 분석하세요.
+   - 예: "일반암" 관련 질문인 경우 -> 암진단비, 일반암 진단비 특약을 찾아 보장 금액을 안내하세요.
+4. **합산 및 중복 보장 계산**: 동일 대상자가 여러 상품에서 동일한 보장(예: 입원일당 3만원 + 2만원 = 총 5만원)을 받는 경우, 합산된 금액을 직관적으로 명시하세요.
+5. **정직하고 친절한 답변**: 
+   - 날조된 데이터를 사용하지 말고 오직 제공된 데이터베이스 안에서만 사실을 기반으로 작성하세요.
+   - 관련된 가입 정보나 보장이 전혀 없는 경우, 가입된 내용이 없음을 명확히 알리고 조언해 주세요.
+
+[답변 출력 마크다운 포맷]
+질문 성격에 따라 가장 가독성 높은 형태로 유연하게 작성하되, 아래 요소를 포함하세요:
+- **요약**: 질문에 대한 핵심 답변 (대상자, 상품 개수, 총 보장 금액 등)
+- **가입 상품 및 세부 보장 내역**: 깔끔한 테이블 형식 (대상자, 보험사, 상품명, 특약명, 보장금액, 비고)
+- **AI 조언 및 분석 의견**: 중복 보장 여부, 보장 공백(Gaps), 혹은 약관상 유의사항(갱신 여부, 면책 등) 조언`;
 
   const selectedModel = localStorage.getItem("insu_gemini_model") || "gemini-2.5-flash";
   
