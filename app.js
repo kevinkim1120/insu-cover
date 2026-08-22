@@ -1843,8 +1843,7 @@ function saveGeminiKey() {
   localStorage.setItem("insu_gemini_key", key);
   showToast("API Key가 브라우저에 안전하게 저장되었습니다.", "success");
   
-  // Show mask and toggle delete button
-  input.value = "•".repeat(20);
+  // Toggle delete button
   document.getElementById("btn-clear-gemini-key").style.display = "inline-flex";
 }
 window.saveGeminiKey = saveGeminiKey;
@@ -1859,12 +1858,18 @@ function clearGeminiKey() {
 window.clearGeminiKey = clearGeminiKey;
 
 function loadGeminiKey() {
-  const key = localStorage.getItem("insu_gemini_key");
+  let key = localStorage.getItem("insu_gemini_key");
   const input = document.getElementById("gemini-api-key");
   if (!input) return;
   
+  // Clean up corrupt bullet-point keys from previous version
+  if (key && (key.includes("•") || key.includes("dot"))) {
+    localStorage.removeItem("insu_gemini_key");
+    key = null;
+  }
+  
   if (key) {
-    input.value = "•".repeat(20);
+    input.value = key;
     document.getElementById("btn-clear-gemini-key").style.display = "inline-flex";
   } else {
     input.value = "";
