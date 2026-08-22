@@ -1850,9 +1850,12 @@ function saveGeminiKey() {
     return;
   }
   
-  // Format validation for Google API Keys
-  if (!key.startsWith("AIzaSy") || key.length !== 39) {
-    showToast("올바른 구글 API Key 형식(AIzaSy로 시작하는 39자리 문자열)이 아닙니다.", "danger");
+  // Format validation for Google API Keys (supports legacy 'AIza' and new secure 'AQ.' prefixes)
+  const isValidPrefix = key.startsWith("AIzaSy") || key.startsWith("AQ.");
+  const isValidLength = key.length >= 35 && key.length <= 60;
+  
+  if (!isValidPrefix || !isValidLength) {
+    showToast("올바른 구글 API Key 형식(AIzaSy 또는 AQ.로 시작하는 키)이 아닙니다.", "danger");
     return;
   }
   
