@@ -8,6 +8,7 @@ let state = {
   adminPassword: "5675",
   currentView: "dashboard", // dashboard | admin
   selectedClientFilter: "all", // "all" or clientId
+  selectedCategoryFilter: "all", // "all" or categoryKey
   activeAdminTab: "clients", // clients | contracts | coverages | settings
   editingClientId: null,
   editingContractId: null,
@@ -475,6 +476,22 @@ function renderDashboardStats() {
   document.getElementById("stat-total-members").textContent = `${targetClients.length}명`;
 }
 
+// Helper to check category matches
+function isCategoryMatch(largeCategory, categoryKey) {
+  if (categoryKey === "all") return true;
+  if (categoryKey === "사망") return largeCategory === "사망/장해";
+  if (categoryKey === "수술") return largeCategory === "수술/입원";
+  if (categoryKey === "치매" || categoryKey === "간병") return largeCategory === "치매/간병";
+  return largeCategory === categoryKey;
+}
+window.isCategoryMatch = isCategoryMatch;
+
+function selectCategory(categoryKey) {
+  state.selectedCategoryFilter = categoryKey;
+  renderDashboardView();
+}
+window.selectCategory = selectCategory;
+
 // Render PART 1: Core Coverage Summary Table (핵심 보장 요약 뷰)
 function renderPart1SummaryTable() {
   const container = document.getElementById("part1-summary-table-container");
@@ -507,7 +524,20 @@ function renderPart1SummaryTable() {
               대상
             </label>
           </th>
-          ${categories.map(cat => `<th>${cat.name}</th>`).join("")}
+          ${categories.map(cat => {
+            const isActive = state.selectedCategoryFilter === cat.key;
+            const activeStyle = isActive ? 'background-color: var(--primary) !important; color: #ffffff !important; font-weight: 800;' : '';
+            const indicator = isActive ? ' 🔍' : '';
+            return `
+              <th onclick="selectCategory('${isActive ? 'all' : cat.key}')" 
+                  style="cursor: pointer; position: relative; transition: all var(--transition-fast); text-align: center; ${activeStyle}"
+                  title="클릭 시 하단에 ${cat.name} 관련 내역만 필터링">
+                <div style="display: flex; align-items: center; justify-content: center; gap: 0.25rem; white-space: nowrap;">
+                  <span>${cat.name}</span>${indicator}
+                </div>
+              </th>
+            `;
+          }).join("")}
         </tr>
       </thead>
       <tbody>
@@ -708,6 +738,16 @@ function renderPart2ContractTable() {
     targetContracts = state.contracts.filter(c => c.clientId === filteredClientId);
   }
 
+  // Filter contracts by category if selected (only show contracts that have matching riders)
+  if (state.selectedCategoryFilter !== "all") {
+    targetContracts = targetContracts.filter(con => {
+      return state.coverages.some(cov => 
+        cov.contractId === con.id && 
+        isCategoryMatch(cov.largeCategory, state.selectedCategoryFilter)
+      );
+    });
+  }
+
   // Filter contract status (paying / paid)
   if (state.contractStatusFilter === "paying") {
     targetContracts = targetContracts.filter(c => c.premium > 0);
@@ -715,12 +755,35 @@ function renderPart2ContractTable() {
     targetContracts = targetContracts.filter(c => c.premium === 0);
   }
 
+  // Build active category filter banner
+  let activeFilterHtml = "";
+  if (state.selectedCategoryFilter !== "all") {
+    const categories = [
+      { name: "실손의료비", key: "실손" },
+      { name: "암 (일반암)", key: "암" },
+      { name: "뇌 (뇌혈관)", key: "뇌" },
+      { name: "심장 (허혈/심혈관)", key: "심장" },
+      { name: "사망 (일반/상해)", key: "사망" },
+      { name: "수술/입원", key: "수술" },
+      { name: "치매", key: "치매" },
+      { name: "간병", key: "간병" },
+      { name: "치아", key: "치아" }
+    ];
+    const catName = categories.find(c => c.key === state.selectedCategoryFilter)?.name || state.selectedCategoryFilter;
+    activeFilterHtml = `
+      <div style="background: rgba(79, 70, 229, 0.05); border: 1px dashed rgba(79, 70, 229, 0.3); padding: 0.75rem 1rem; border-radius: var(--radius-sm); margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between; font-size: 0.875rem;">
+        <div style="color: var(--primary); font-weight: 600;">⚡ ${catName} 관련 보험 상품만 필터링 적용 중</div>
+        <button class="btn btn-secondary btn-sm" onclick="selectCategory('all')" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; height: auto;">필터 해제</button>
+      </div>
+    `;
+  }
+
   if (targetContracts.length === 0) {
-    container.innerHTML = `<p style="padding: 1.5rem; text-align: center; color: var(--text-muted);">등록된 가입 상품이 없습니다.</p>`;
+    container.innerHTML = activeFilterHtml + `<p style="padding: 1.5rem; text-align: center; color: var(--text-muted);">조건에 부합하는 가입 상품이 없습니다.</p>`;
     return;
   }
 
-  let html = `
+  let html = activeFilterHtml + `
     <table class="custom-table">
       <thead>
         <tr>
@@ -807,6 +870,11 @@ function renderPart3CoverageTable() {
     targetCoverages = state.coverages.filter(c => c.clientId === filteredClientId);
   }
 
+  // Filter coverages by category if selected
+  if (state.selectedCategoryFilter !== "all") {
+    targetCoverages = targetCoverages.filter(cov => isCategoryMatch(cov.largeCategory, state.selectedCategoryFilter));
+  }
+
   // Exclude duplicate coverages if active
   if (state.excludeDuplicates) {
     targetCoverages = targetCoverages.filter(cov => {
@@ -816,12 +884,35 @@ function renderPart3CoverageTable() {
     });
   }
 
+  // Build active category filter banner
+  let activeFilterHtml = "";
+  if (state.selectedCategoryFilter !== "all") {
+    const categories = [
+      { name: "실손의료비", key: "실손" },
+      { name: "암 (일반암)", key: "암" },
+      { name: "뇌 (뇌혈관)", key: "뇌" },
+      { name: "심장 (허혈/심혈관)", key: "심장" },
+      { name: "사망 (일반/상해)", key: "사망" },
+      { name: "수술/입원", key: "수술" },
+      { name: "치매", key: "치매" },
+      { name: "간병", key: "간병" },
+      { name: "치아", key: "치아" }
+    ];
+    const catName = categories.find(c => c.key === state.selectedCategoryFilter)?.name || state.selectedCategoryFilter;
+    activeFilterHtml = `
+      <div style="background: rgba(79, 70, 229, 0.05); border: 1px dashed rgba(79, 70, 229, 0.3); padding: 0.75rem 1rem; border-radius: var(--radius-sm); margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between; font-size: 0.875rem;">
+        <div style="color: var(--primary); font-weight: 600;">⚡ ${catName} 관련 세부 담보 특약만 필터링 적용 중</div>
+        <button class="btn btn-secondary btn-sm" onclick="selectCategory('all')" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; height: auto;">필터 해제</button>
+      </div>
+    `;
+  }
+
   if (targetCoverages.length === 0) {
-    container.innerHTML = `<p style="padding: 1.5rem; text-align: center; color: var(--text-muted);">등록된 담보 세부 정보가 없습니다.</p>`;
+    container.innerHTML = activeFilterHtml + `<p style="padding: 1.5rem; text-align: center; color: var(--text-muted);">조건에 부합하는 세부 담보 정보가 없습니다.</p>`;
     return;
   }
 
-  let html = `
+  let html = activeFilterHtml + `
     <table class="custom-table">
       <thead>
         <tr>
