@@ -1980,6 +1980,7 @@ ${JSON.stringify(coveragesContext, null, 2)}
   ];
   
   let response = null;
+  let firstError = null;
   let lastError = null;
   
   try {
@@ -2003,15 +2004,18 @@ ${JSON.stringify(coveragesContext, null, 2)}
           break; // Exit loop on success
         } else {
           const errData = await response.json();
-          lastError = errData.error?.message || `HTTP ${response.status}`;
+          const errMsg = errData.error?.message || `HTTP ${response.status}`;
+          if (!firstError) firstError = errMsg;
+          lastError = errMsg;
         }
       } catch (e) {
+        if (!firstError) firstError = e.message;
         lastError = e.message;
       }
     }
     
     if (!response || !response.ok) {
-      throw new Error(lastError || "모든 Gemini 모델의 호출에 실패하였습니다.");
+      throw new Error(firstError || "모든 Gemini 모델의 호출에 실패하였습니다.");
     }
     
     const data = await response.json();
