@@ -1171,3 +1171,108 @@ body.mobile-forced .family-select-card {
 body.mobile-forced .family-card-stats {
   display: none !important;
 }
+
+/* AI Search Panel Styling */
+.badge-tag {
+  background-color: var(--primary-light);
+  color: var(--primary);
+  border: 1px solid var(--border-glass);
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  font-weight: 500;
+  transition: all var(--transition-fast);
+}
+.badge-tag:hover {
+  background-color: var(--primary);
+  color: var(--text-inverse);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.ai-result-panel {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+  margin-top: 1.25rem;
+  max-height: 600px;
+  overflow-y: auto;
+  line-height: 1.8;
+  font-size: 0.925rem;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+}
+
+/* AI Result Markdown Styling */
+.ai-result-panel h3 {
+  color: var(--text-main);
+  font-weight: 700;
+  margin-top: 1.25rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-glass);
+  padding-bottom: 0.25rem;
+}
+.ai-result-panel h4 {
+  color: var(--primary);
+  font-weight: 600;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+.ai-result-panel p {
+  margin-bottom: 0.75rem;
+}
+.ai-result-panel li {
+  margin-left: 1.5rem;
+  margin-bottom: 0.35rem;
+  list-style-type: disc;
+}
+.ai-result-panel blockquote {
+  background-color: rgba(79, 70, 229, 0.05);
+  border-left: 4px solid var(--primary);
+  padding: 0.75rem 1rem;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  margin-bottom: 1rem;
+  font-style: italic;
+}
+.ai-result-panel table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.85rem;
+}
+.ai-result-panel th, .ai-result-panel td {
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--border-glass);
+}
+.ai-result-panel th {
+  background-color: #1e3a8a;
+  color: #ffffff;
+  font-weight: 600;
+}
+[data-theme="dark"] .ai-result-panel th {
+  background-color: #172554;
+}
+
+/* Loading animations */
+.ai-pulse-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem;
+  gap: 1rem;
+}
+
+.ai-pulse-spinner {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--primary);
+  opacity: 0.6;
+  animation: pulse-zoom 1.2s infinite ease-in-out;
+}
+
+@keyframes pulse-zoom {
+  0% { transform: scale(0); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 0; }
+}
